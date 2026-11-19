@@ -1,0 +1,33 @@
+---
+name: Build signed pacman repository
+description: Build the vendored PKGBUILDs into a GPG-signed pacman repository (arch-bootc-pkgs pattern)
+inputs:
+  repo-name:
+    description: Name of the generated pacman repository
+    required: true
+  gpg-key-id:
+    description: Fingerprint of the signing key
+    required: true
+  gpg-key-data:
+    description: Armored private GPG key
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Build packages
+      shell: bash
+      env:
+        REPO_NAME: ${{ inputs.repo-name }}
+        GPG_KEY_ID: ${{ inputs.gpg-key-id }}
+        GPG_KEY_DATA: ${{ inputs.gpg-key-data }}
+      run: |
+        set -euo pipefail
+        docker build -f build/Dockerfile -t olympus-pkgbuild .
+        docker run --rm \
+          -e INPUT_REPO_NAME="$REPO_NAME" \
+          -e INPUT_GPG_KEY_ID="$GPG_KEY_ID" \
+          -e INPUT_GPG_KEY_DATA="$GPG_KEY_DATA" \
+          -v "$GITHUB_WORKSPACE:/github/workspace" \
+          -w /github/workspace \
+          olympus-pkgbuild

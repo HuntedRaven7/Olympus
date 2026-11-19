@@ -1,0 +1,39 @@
+# Maintainer: Hec <hec@heccraft.com> (upstream); vendored into Olympus
+pkgname=bootupd
+pkgver=0.2.26 # renovate: datasource=github-releases depName=coreos/bootupd
+pkgrel=1
+pkgdesc='Bootloader updater for bootc systems (Arch paths)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/coreos/bootupd'
+license=('Apache-2.0')
+depends=('systemd' 'ostree')
+makedepends=('git' 'rust' 'cargo' 'make' 'go-md2man')
+source=("git+${url}.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+prepare() {
+    cd "${srcdir}/bootupd"
+    # Adapt the Fedora-only GRUB paths to Arch Linux (upstream carries a
+    # 251-line patch for this; we apply the equivalent replacements inline).
+    find . -type f \( -name '*.rs' -o -name '*.cfg' \) -print0 | \
+        xargs -0 sed -i \
+            -e 's@/boot/grub2@/boot/grub@g' \
+            -e 's@grub2-install@grub-install@g' \
+            -e 's@grub2-editenv@grub-editenv@g' \
+            -e 's@grub2-mkconfig@grub-mkconfig@g'
+}
+
+build() {
+    cd "${srcdir}/bootupd"
+    make
+}
+
+check() {
+    cd "${srcdir}/bootupd"
+    make check
+}
+
+package() {
+    cd "${srcdir}/bootupd"
+    make DESTDIR="${pkgdir}" install install-grub-static install-systemd-unit
+}

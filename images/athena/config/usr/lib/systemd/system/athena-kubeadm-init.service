@@ -1,0 +1,19 @@
+[Unit]
+Description=Initialize the single-node kubeadm control plane
+Documentation=https://github.com/HuntedRaven7/Olympus/blob/main/docs/athena.md
+ConditionPathExists=!/etc/kubernetes/admin.conf
+Wants=network-online.target
+After=network-online.target containerd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+StateDirectory=athena
+Environment=KUBECONFIG=/etc/kubernetes/admin.conf
+ExecStart=/usr/bin/kubeadm init --config /etc/kubernetes/kubeadm-init.yaml --upload-certs
+ExecStart=/usr/bin/install -D -m 0600 /etc/kubernetes/admin.conf /var/lib/athena/admin.conf
+ExecStart=/usr/bin/kubectl apply -f /usr/share/athena/cni/flannel.yaml
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

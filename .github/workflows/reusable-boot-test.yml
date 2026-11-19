@@ -1,0 +1,62 @@
+---
+name: Boot test
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "hera, athena or apollo"
+        required: true
+        type: string
+      cache-key:
+        description: "Pacman cache key"
+        required: true
+        type: string
+      check-kubestellar:
+        description: "Also check KubeStellar units/CRDs (Athena only)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  boot-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup bootc environment
+        uses: bootc-dev/actions/bootc-ubuntu-setup@main
+        with:
+          libvirt: "true"
+
+      - name: Setup Just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+
+      - name: Install bcvk
+        run: cargo install bcvk --locked
+
+      - name: Restore pacman cache
+        run: mkdir -p .cache/pacman
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
+        with:
+          name: pacman-cache-${{ inputs.cache-key }}
+          path: .cache/pacman
+
+      - name: Build debug variant
+        env:
+          WITH_TEST_TOOLS: "true"
+        run: |
+          sudo -E env WITH_TEST_TOOLS=true $(command -v just 2>/dev/null || echo just) \
+            build "${{ inputs.image-name }}"
+
+      - name: Boot and check for failed units
+        run: |
+          ./tests/boot/run.sh "${{ inputs.image-name }}"
+
+      - name: KubeStellar checks
+        if: inputs.check-kubestellar
+        run: ./tests/kubestellar/run.sh

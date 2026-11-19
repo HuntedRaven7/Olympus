@@ -1,0 +1,62 @@
+# Minimal flannel CNI manifest for the single-node control plane.
+# Pinned by Renovate; replace with your preferred CNI via a confext.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-flannel-cfg
+  namespace: kube-flannel
+data:
+  net-conf.json: |
+    {
+      "Network": "10.244.0.0/16",
+      "Backend": { "Type": "vxlan" }
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-flannel-ds
+  namespace: kube-flannel
+spec:
+  selector:
+    matchLabels:
+      app: flannel
+  template:
+    metadata:
+      labels:
+        app: flannel
+    spec:
+      hostNetwork: true
+      containers:
+        - name: kube-flannel
+          image: docker.io/flannel/flannel:v0.26.7
+          args: ["--ip-masq", "--kube-subnet-mgr"]
+          securityContext:
+            privileged: true
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: cni
+              mountPath: /etc/cni/net.d
+      initContainers:
+        - name: install-cni-plugin
+          image: docker.io/flannel/flannel-cni-plugin:v1.6.2-flannel1
+          command: ["/bin/cp"]
+          args: ["-f", "/flannel", "/opt/cni/bin/flannel"]
+          volumeMounts:
+            - name: cni-plugin
+              mountPath: /opt/cni/bin
+      volumes:
+        - name: cni
+          hostPath:
+            path: /etc/cni/net.d
+        - name: cni-plugin
+          hostPath:
+            path: /opt/cni/bin

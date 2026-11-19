@@ -1,0 +1,72 @@
+---
+name: Pacman cache
+# Reusable pacman cache for Olympus image builds.
+#
+# A workflow_call job cannot share its workspace with the caller's job, so the
+# cache is carried between jobs as an artifact:
+#   1. call this workflow with mode=restore  -> uploads "pacman-cache-<key>"
+#   2. in the build job, download artifact to .cache/pacman and build
+#   3. upload the updated .cache/pacman as "pacman-cache-updated-<key>"
+#   4. call this workflow with mode=save -> saves the updated cache
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "restore or save"
+        required: true
+        type: string
+      cache-key:
+        description: "Base key for the cache (image name + runner arch)"
+        required: true
+        type: string
+      cache-path:
+        description: "Path cached inside the job workspace"
+        required: false
+        type: string
+        default: ".cache/pacman"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  pacman-cache:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Restore pacman cache
+        if: inputs.mode == 'restore'
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v4.2.4
+        with:
+          path: ${{ inputs.cache-path }}
+          key: pacman-${{ inputs.cache-key }}
+          restore-keys: |
+            pacman-${{ inputs.cache-key }}-
+            pacman-
+
+      - name: Ensure cache directory exists
+        if: inputs.mode == 'restore'
+        run: mkdir -p "${{ inputs.cache-path }}"
+
+      - name: Upload restored cache to the build job
+        if: inputs.mode == 'restore'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4.6.2
+        with:
+          name: pacman-cache-${{ inputs.cache-key }}
+          path: ${{ inputs.cache-path }}
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Download updated cache from the build job
+        if: inputs.mode == 'save'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
+        with:
+          name: pacman-cache-updated-${{ inputs.cache-key }}
+          path: ${{ inputs.cache-path }}
+
+      - name: Save pacman cache
+        if: inputs.mode == 'save'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v4.2.4
+        with:
+          path: ${{ inputs.cache-path }}
+          key: pacman-${{ inputs.cache-key }}

@@ -1,0 +1,9 @@
+NAME="Hera"
+PRETTY_NAME="placeholder_name"
+ID=hera
+ID_LIKE=arch
+BUILD_ID=placeholder_date
+ANSI_COLOR="1;35"
+HOME_URL="https://github.com/HuntedRaven7/Olympus"
+DOCUMENTATION_URL="https://github.com/HuntedRaven7/Olympus/tree/main/docs"
+BUG_REPORT_URL="https://github.com/HuntedRaven7/Olympus/issues"

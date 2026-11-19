@@ -1,0 +1,15 @@
+[Unit]
+Description=Enroll the Olympus Secure Boot certificate with MOK on first boot
+ConditionPathExists=!/etc/olympus/mok-enrolled
+ConditionPathExists=/usr/share/olympus/certs/secureboot.der
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/sys-mok-enroll
+ExecStartPost=/usr/bin/systemctl disable mok-enroll.service
+ExecStartPost=/usr/bin/systemctl mask mok-enroll.service
+
+[Install]
+WantedBy=multi-user.target

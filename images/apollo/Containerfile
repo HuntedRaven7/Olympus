@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1.7
+# Apollo — QuickShell + MangoWC Wayland workstation built on Hera.
+ARG BASE_IMAGE=localhost/hera:latest
+
+FROM ${BASE_IMAGE} AS base
+
+LABEL containers.bootc=1 \
+      ostree.bootable=1 \
+      org.opencontainers.image.title=Apollo \
+      org.opencontainers.image.description="QuickShell + MangoWC workstation" \
+      org.opencontainers.image.source=https://github.com/HuntedRaven7/Olympus
+
+COPY images/apollo/config/ /
+COPY images/apollo/scripts/ /apollo-scripts/
+
+ARG IMAGE_VARIANT=latest
+# Set to true only for the boot-test debug variant; never for published images.
+ARG WITH_TEST_TOOLS=false
+
+RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg \
+    --mount=type=tmpfs,dst=/tmp \
+    bash /apollo-scripts/00-packages.sh && \
+    bash /apollo-scripts/01-desktop.sh && \
+    bash /apollo-scripts/02-finalize.sh && \
+    bootc container lint

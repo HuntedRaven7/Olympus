@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.7
+# Hera — sealed-capable Arch Linux bootc base image.
+# Build pattern adapted from tartaria-dev/tartaria (Containerfile.arch-sealed).
+ARG BOOTC_REPO_URL="https://github.com/hecknt/arch-bootc-pkgs/releases/download/$repo"
+ARG BOOTC_REPO_KEY="5DE6BF3EBC86402E7A5C5D241FA48C960F9604CB"
+
+FROM docker.io/archlinux/archlinux:base AS base
+
+LABEL containers.bootc=1 \
+      ostree.bootable=1 \
+      org.opencontainers.image.title=Hera \
+      org.opencontainers.image.description="Sealed Arch Linux bootc base image (TTY only)" \
+      org.opencontainers.image.source=https://github.com/HuntedRaven7/Olympus
+
+COPY images/hera/config/ /
+COPY images/hera/scripts/ /hera-scripts/
+
+ARG BOOTC_REPO_URL
+ARG BOOTC_REPO_KEY
+ARG IMAGE_NAME=hera
+ARG IMAGE_VARIANT=latest
+ARG IMAGE_FLAVOR=arch
+# Set to true only for the boot-test debug variant; never for published images.
+ARG WITH_TEST_TOOLS=false
+
+RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg \
+    --mount=type=secret,id=secureboot_cert,target=/run/secrets/secureboot_cert \
+    --mount=type=tmpfs,dst=/tmp \
+    bash /hera-scripts/00-base.sh && \
+    bash /hera-scripts/01-packages.sh && \
+    bash /hera-scripts/02-finalize.sh && \
+    rm -rf /tmp/* /tmp/.* && \
+    bootc container lint
+
+# Stage 2: pull the kernel and initramfs out of the rootfs.
+FROM base AS split-kernel
+RUN mkdir -p /kernel && \
+    bootc container split-kernel-and-rootfs --rootfs / --output /kernel
+
+# Stage 3: OCI-native rechunking (projectbluefin/actions chunka pattern).
+# Writes the chunked rootfs to ./out via the bind-mounted workspace.
+FROM quay.io/coreos/chunkah:v0.6.0 AS chunkah
+ARG CHUNKAH_CONFIG_STR
+RUN --mount=from=base,src=/,target=/chunkah,ro \
+    --mount=type=bind,src=.,target=/src,rw \
+    chunkah build --skip-special-files --max-layers 128 \
+        --prune /ostree --prune /sysroot/ostree \
+        --output oci:/src/out

@@ -1,0 +1,21 @@
+---
+name: Upstream drift check
+on:
+  schedule:
+    - cron: "15 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Compare vendored build patterns with upstream
+        uses: ./.github/actions/upstream-drift
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

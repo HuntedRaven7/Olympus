@@ -1,0 +1,177 @@
+---
+name: Build and publish a bootc image
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "hera, athena or apollo"
+        required: true
+        type: string
+      base-image:
+        description: "Base image reference for the Containerfile"
+        required: true
+        type: string
+      cache-key:
+        description: "Pacman cache key used by the restore/save workflows"
+        required: true
+        type: string
+      sealed:
+        description: "Build the sealed variant when Secure Boot secrets exist"
+        required: false
+        type: boolean
+        default: false
+      publish:
+        description: "Push and sign the image"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SIGNING_SECRET:
+        required: false
+      SECUREBOOT_KEY:
+        required: false
+      SECUREBOOT_CERT:
+        required: false
+      GPG_KEY_DATA:
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: ${{ inputs.image-name }}
+  HAS_SIGNING_KEY: ${{ secrets.SIGNING_SECRET != '' }}
+  HAS_SECUREBOOT: ${{ secrets.SECUREBOOT_KEY != '' && secrets.SECUREBOOT_CERT != '' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+
+      - name: Restore pacman cache artifact
+        run: mkdir -p .cache/pacman
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
+        with:
+          name: pacman-cache-${{ inputs.cache-key }}
+          path: .cache/pacman
+
+      - name: Write Secure Boot secrets
+        if: inputs.sealed && env.HAS_SECUREBOOT == 'true'
+        env:
+          SECUREBOOT_KEY: ${{ secrets.SECUREBOOT_KEY }}
+          SECUREBOOT_CERT: ${{ secrets.SECUREBOOT_CERT }}
+        run: |
+          mkdir -p .drift
+          printf '%s\n' "$SECUREBOOT_KEY" > .drift/secureboot.key
+          printf '%s\n' "$SECUREBOOT_CERT" > .drift/secureboot.crt
+          chmod 600 .drift/secureboot.key
+
+      - name: Build base image
+        env:
+          BASE_IMAGE: ${{ inputs.base-image }}
+        run: |
+          sudo env REGISTRY="$REGISTRY" BASE_IMAGE="$BASE_IMAGE" \
+            "$(which just)" build "$IMAGE_NAME"
+
+      - name: Rechunk with chunkah (projectbluefin/actions)
+        if: "!(inputs.sealed && env.HAS_SECUREBOOT == 'true')"
+        uses: projectbluefin/actions/bootc-build/chunka@v1
+        with:
+          source-image: localhost/${{ inputs.image-name }}:latest
+
+      - name: Build sealed image
+        if: inputs.sealed && env.HAS_SECUREBOOT == 'true'
+        env:
+          SECUREBOOT_KEY: ${{ github.workspace }}/.drift/secureboot.key
+          SECUREBOOT_CERT: ${{ github.workspace }}/.drift/secureboot.crt
+        run: |
+          sudo env SECUREBOOT_KEY="$SECUREBOOT_KEY" SECUREBOOT_CERT="$SECUREBOOT_CERT" \
+            $(which just) build-sealed "$IMAGE_NAME"
+          sudo podman tag "localhost/${IMAGE_NAME}:latest-sealed" "localhost/${IMAGE_NAME}:latest"
+
+      - name: Upload updated pacman cache
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4.6.2
+        with:
+          name: pacman-cache-updated-${{ inputs.cache-key }}
+          path: .cache/pacman
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Login to GHCR
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | sudo podman login -u "${{ github.actor }}" --password-stdin ghcr.io
+
+      - name: Push image
+        if: inputs.publish
+        id: push
+        env:
+          MAX_RETRIES: 3
+        run: |
+          set -euo pipefail
+          for i in $(seq "$MAX_RETRIES"); do
+            sudo podman push --digestfile=/tmp/digestfile \
+              "localhost/${IMAGE_NAME}:latest" \
+              "${REGISTRY}/${IMAGE_NAME}:latest" && break || sleep $((5 * i))
+          done
+          echo "digest=$(cat /tmp/digestfile)" >> "$GITHUB_OUTPUT"
+
+      - name: Sign, SBOM and attest (projectbluefin/actions)
+        id: sign
+        if: inputs.publish && env.HAS_SIGNING_KEY == 'true'
+        continue-on-error: true
+        uses: projectbluefin/actions/bootc-build/sign-and-publish@v1
+        with:
+          image: ${{ env.REGISTRY }}/${{ inputs.image-name }}
+          digest: ${{ steps.push.outputs.digest }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          signing-mode: key
+          signing-key: ${{ secrets.SIGNING_SECRET }}
+          generate-sbom: "true"
+          push-attestation: "true"
+          image-name: ${{ inputs.image-name }}
+          new-bundle-format: "false"
+          certificate-identity-regexp: 'https://github.com/${{ github.repository }}/.github/workflows/'
+
+      - name: Fail if the published image is unsigned
+        if: inputs.publish && env.HAS_SIGNING_KEY == 'true' && steps.sign.outputs.image-signed != 'true'
+        run: |
+          echo "::error::${REGISTRY}/${IMAGE_NAME} was pushed but has no verified signature"
+          exit 1
+
+      - name: Warn when signing is not configured
+        if: inputs.publish && env.HAS_SIGNING_KEY == 'false'
+        run: echo "::warning::SIGNING_SECRET is not set - publishing an unsigned image"
+
+      - name: Scan image (projectbluefin/actions)
+        if: inputs.publish
+        continue-on-error: true
+        uses: projectbluefin/actions/bootc-build/scan-image@v1
+        with:
+          image: ${{ env.REGISTRY }}/${{ inputs.image-name }}:latest
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          severity-threshold: CRITICAL
+          create-issue: "false"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ${IMAGE_NAME}"
+            echo "- sealed: ${{ inputs.sealed && env.HAS_SECUREBOOT == 'true' }}"
+            echo "- signed: ${{ env.HAS_SIGNING_KEY }}"
+            echo "- published: ${{ inputs.publish }}"
+          } >> "$GITHUB_STEP_SUMMARY"

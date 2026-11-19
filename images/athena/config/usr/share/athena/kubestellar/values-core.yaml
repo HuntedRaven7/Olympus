@@ -1,0 +1,16 @@
+# KubeStellar core chart values (KubeFlex + PostCreateHooks for ITS/WDS).
+# Mirrors projectbluefin/server's 31-kubestellar-full add-on.
+kubeflex:
+  controllerManager:
+    image:
+      repository: ghcr.io/kubestellar/kubeflex/manager
+      tag: 0.9.3
+  postgresql:
+    enabled: true
+    image:
+      repository: postgres
+      tag: 17.9-alpine
+
+# The KubeStellar controller and OCM transport controller are installed into
+# WDS control planes by the chart's PostCreateHooks. Keep these digests pinned
+# in production via a confext (see docs/sealed-composefs.md).

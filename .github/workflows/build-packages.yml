@@ -1,0 +1,46 @@
+---
+name: Build bootc packages
+on:
+  push:
+    branches: [main]
+    paths: ["packages/**", "build/**", ".github/workflows/build-packages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+      GPG_KEY_DATA: ${{ secrets.GPG_KEY_DATA }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build signed repository
+        if: env.GPG_KEY_ID != '' && env.GPG_KEY_DATA != ''
+        uses: ./.github/actions/build-signed-repo
+        with:
+          repo-name: bootc
+          gpg-key-id: ${{ vars.GPG_KEY_ID }}
+          gpg-key-data: ${{ secrets.GPG_KEY_DATA }}
+
+      - name: Skip when no signing key is configured
+        if: env.GPG_KEY_ID == '' || env.GPG_KEY_DATA == ''
+        run: |
+          echo "::warning::GPG_KEY_ID/GPG_KEY_DATA not configured - skipping package repository publication"
+
+      - name: Publish repository atomically
+        if: env.GPG_KEY_ID != '' && env.GPG_KEY_DATA != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release delete --yes _bootc || true
+          gh release create _bootc --title _bootc --notes-from-tag 2>/dev/null || \
+            gh release create _bootc --title _bootc --notes "Temporary release" repo/*
+          gh release delete --yes bootc || true
+          gh release edit --latest --tag bootc --title bootc _bootc
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/_bootc" || true
+          gh release upload bootc repo/* --clobber 2>/dev/null || true

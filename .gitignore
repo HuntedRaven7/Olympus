@@ -1,0 +1,49 @@
+# Build outputs
+/dist/
+/output/
+/out/
+/bootable.img
+/*.raw
+/*.qcow2
+/*.img
+
+# Local pacman cache primed by the reusable cache workflow
+.cache/
+
+# Local secrets and key material — never commit these
+# (public halves cosign.pub and packages/repo.gpg are intentionally tracked)
+/.drift/
+.env
+.env.*
+*.key
+*.pem
+*.der
+*.p12
+# Locally generated Secure Boot cert (public, but not needed in git)
+/secureboot.crt
+*.secret
+secrets.env
+
+# Tool caches / dependencies
+node_modules/
+.podman-cache/
+.terraform/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python test and lint artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/

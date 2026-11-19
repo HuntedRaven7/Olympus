@@ -1,0 +1,39 @@
+# Maintainer: Hec <hec@heccraft.com> (upstream); vendored into Olympus
+pkgname=bootc
+pkgver=1.3.0 # renovate: datasource=github-releases depName=bootc-dev/bootc
+pkgrel=1
+pkgdesc='Bootable container system (Arch build, no libselinux)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/bootc-dev/bootc'
+license=('Apache-2.0')
+depends=('ostree' 'bubblewrap' 'skopeo' 'systemd')
+makedepends=('git' 'rust' 'cargo' 'go-md2man' 'make' 'pkgconf' 'glibc')
+source=("git+${url}.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+prepare() {
+    cd "${srcdir}/bootc"
+    git submodule update --init --recursive
+}
+
+build() {
+    cd "${srcdir}/bootc"
+    # Arch Linux does not ship libselinux: disable the install-to-disk features
+    # that depend on it, following hecknt/arch-bootc-pkgs.
+    local cargo_options=(--no-default-features --features install-to-disk)
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+    make bin CARGO_OPTIONS="${cargo_options[*]}"
+}
+
+check() {
+    cd "${srcdir}/bootc"
+    make check CARGO_OPTIONS="--no-default-features --features install-to-disk"
+}
+
+package() {
+    cd "${srcdir}/bootc"
+    make install-all DESTDIR="${pkgdir}" CARGO_OPTIONS="--no-default-features --features install-to-disk"
+    install -Dm0644 -t "${pkgdir}/usr/share/bash-completion/completions/" targets/bash-completion/bootc
+    install -Dm0644 -t "${pkgdir}/usr/share/zsh/site-functions/" targets/zsh-completion/_bootc
+    install -Dm0644 -t "${pkgdir}/usr/share/fish/vendor_completions.d/" targets/fish-completion/bootc.fish
+}

@@ -1,0 +1,56 @@
+---
+name: Build Hera
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+  security-events: write
+
+on:
+  push:
+    branches: [main]
+    paths: ["images/hera/**", "packages/**", "build/**", ".github/workflows/**", "Justfile"]
+  pull_request:
+    branches: [main]
+    paths: ["images/hera/**", "packages/**", "build/**", ".github/workflows/**", "Justfile"]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cache-restore:
+    uses: ./.github/workflows/reusable-pacman-cache.yml
+    with:
+      mode: restore
+      cache-key: hera-amd64
+
+  build:
+    needs: cache-restore
+    uses: ./.github/workflows/reusable-bootc-build.yml
+    secrets: inherit
+    with:
+      image-name: hera
+      base-image: docker.io/archlinux/archlinux:base
+      cache-key: hera-amd64
+      sealed: true
+      publish: ${{ github.event_name != 'pull_request' }}
+
+  cache-save:
+    needs: build
+    if: needs.build.result == 'success'
+    uses: ./.github/workflows/reusable-pacman-cache.yml
+    with:
+      mode: save
+      cache-key: hera-amd64
+
+  boot-test:
+    needs: [build, cache-restore]
+    uses: ./.github/workflows/reusable-boot-test.yml
+    with:
+      image-name: hera
+      cache-key: hera-amd64

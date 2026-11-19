@@ -1,0 +1,12 @@
+[Unit]
+Description=Factory-reset Athena (restore /etc and /var from the image)
+ConditionPathExists=!/etc/olympus/factory-reset-disabled
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/systemd/systemd-factory-reset --yes
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

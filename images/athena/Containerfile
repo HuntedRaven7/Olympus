@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1.7
+# Athena — hardened kubeadm + KubeStellar server built on Hera.
+# Build pattern follows projectbluefin/server's homelab control-plane profile.
+ARG BASE_IMAGE=localhost/hera:latest
+
+FROM ${BASE_IMAGE} AS base
+
+LABEL containers.bootc=1 \
+      ostree.bootable=1 \
+      org.opencontainers.image.title=Athena \
+      org.opencontainers.image.description="Hardened kubeadm + KubeStellar server" \
+      org.opencontainers.image.source=https://github.com/HuntedRaven7/Olympus
+
+COPY images/athena/config/ /
+COPY images/athena/scripts/ /athena-scripts/
+
+ARG IMAGE_VARIANT=latest
+# Set to true only for the boot-test debug variant; never for published images.
+ARG WITH_TEST_TOOLS=false
+
+RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg \
+    --mount=type=tmpfs,dst=/tmp \
+    bash /athena-scripts/00-packages.sh && \
+    bash /athena-scripts/01-kubernetes.sh && \
+    bash /athena-scripts/02-kubestellar.sh && \
+    bash /athena-scripts/03-harden.sh && \
+    bootc container lint

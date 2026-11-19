@@ -1,0 +1,71 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests",
+  ],
+  labels: ["dependencies", "renovate"],
+  schedule: ["after 5am and before 9am every weekday"],
+  timezone: "Etc/UTC",
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+  minimumReleaseAge: "3 days",
+
+  // Keep image digests and GitHub Actions pinned, but group the noise.
+  packageRules: [
+    {
+      description: "Group GitHub Actions digest bumps into a single PR",
+      matchManagers: ["github-actions"],
+      groupName: "github-actions",
+      automerge: true,
+    },
+    {
+      description: "Never automerge major container base image bumps",
+      matchManagers: ["dockerfile"],
+      matchUpdateTypes: ["major"],
+      automerge: false,
+    },
+    {
+      description: "Automerge container base image digest refreshes",
+      matchManagers: ["dockerfile"],
+      matchUpdateTypes: ["digest", "patch", "minor"],
+      automerge: true,
+    },
+    {
+      description: "KubeStellar / Kubernetes is coordinated manually",
+      matchPackageNames: [
+        "kubeadm",
+        "kubelet",
+        "kubectl",
+        "helm",
+        "kubestellar/**",
+      ],
+      automerge: false,
+      groupName: "kubernetes",
+    },
+    {
+      description: "Upstream build patterns are vendored deliberately — review bumps",
+      matchPaths: ["packages/**", "build/**"],
+      automerge: false,
+      labels: ["upstream-drift", "dependencies"],
+    },
+  ],
+
+  // Track the pkgver= lines in the copied PKGBUILDs, as arch-bootc-pkgs does.
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["/(^|/)PKGBUILD$/"],
+      matchStrings: [
+        "pkgver=(?<currentValue>.*) # renovate: datasource=(?<datasource>.*) depName=(?<depName>.*)",
+      ],
+      extractVersionTemplate: "^v?(?<version>.*)$",
+    },
+  ],
+
+  dependencyDashboard: {
+    labels: ["dependencies", "renovate"],
+  },
+}

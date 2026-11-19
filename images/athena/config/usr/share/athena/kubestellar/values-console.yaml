@@ -1,0 +1,25 @@
+# KubeStellar Console values. Run as non-root with a read-only rootfs, like
+# projectbluefin/server's 30-kubestellar-console add-on.
+replicaCount: 1
+service:
+  port: 8080
+resources:
+  limits:
+    cpu: 500m
+    memory: 2Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+persistence:
+  enabled: true
+  accessModes: ["ReadWriteOnce"]
+selfUpgrade:
+  enabled: false
+backup:
+  enabled: false

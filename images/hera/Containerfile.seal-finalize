@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1.7
+# Hera seal-finalize: verity-seal the chunked composefs rootfs into a signed UKI.
+# Adapted from tartaria-dev/tartaria Containerfile.seal-finalize.
+ARG BASE_IMAGE=localhost/hera:latest
+ARG SPLITKERNEL_IMAGE=localhost/hera-split:latest
+
+FROM ${BASE_IMAGE} AS base
+FROM ${SPLITKERNEL_IMAGE} AS split-kernel
+FROM oci:out AS base-chunked
+
+FROM base AS sealed-uki
+COPY images/hera/config/ /
+COPY images/hera/scripts/ /hera-scripts/
+RUN --mount=type=bind,from=base-chunked,target=/target \
+    --mount=type=bind,from=split-kernel,source=/kernel,target=/kernel \
+    --mount=type=secret,id=secureboot_key,required=true \
+    --mount=type=secret,id=secureboot_cert,required=true \
+    bash /hera-scripts/03-ukify.sh
+
+FROM base-chunked AS final
+COPY --from=sealed-uki /out/uki/*.efi /boot/EFI/Linux/
+COPY --from=sealed-uki /out/boot/grubx64.efi /boot/EFI/BOOT/grubx64.efi
+COPY --from=base /usr/share/shim-signed/shimx64.efi /boot/EFI/BOOT/BOOTX64.EFI
+COPY --from=base /usr/share/shim-signed/mmx64.efi /boot/EFI/BOOT/mmx64.efi

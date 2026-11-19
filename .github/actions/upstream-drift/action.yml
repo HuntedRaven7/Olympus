@@ -1,0 +1,26 @@
+---
+name: Upstream drift
+description: Detect drift between vendored build patterns and their upstream sources, and open/update an issue
+inputs:
+  check-only:
+    description: "Only validate the pin file (no network calls)"
+    required: false
+    default: "false"
+  github-token:
+    description: "Token used to create or update the drift issue"
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Check upstream drift
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        CHECK_ONLY: ${{ inputs.check-only }}
+      run: |
+        if [[ "$CHECK_ONLY" == "true" ]]; then
+          ./scripts/check-upstream-drift.sh --check-only
+        else
+          ./scripts/check-upstream-drift.sh
+        fi

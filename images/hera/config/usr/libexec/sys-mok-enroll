@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Enroll the sealed image's Secure Boot certificate once. Password is
+# intentionally fixed for development; replace with a credential in production.
+set -euo pipefail
+
+mkdir -p /etc/olympus
+hash_file=$(mktemp)
+mokutil --generate-hash="olympus" > "$hash_file"
+mokutil --import /usr/share/olympus/certs/secureboot.der --hash-file "$hash_file"
+rm -f "$hash_file"
+touch /etc/olympus/mok-enrolled

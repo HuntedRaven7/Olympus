@@ -1,0 +1,33 @@
+[Unit]
+Description=Apply the pinned KubeStellar charts to the local control plane
+After=athena-kubeadm-init.service network-online.target
+Requires=athena-kubeadm-init.service
+Wants=network-online.target
+StartLimitIntervalSec=1h
+StartLimitBurst=4
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/usr/share/athena/kubestellar/versions.env
+Environment=KUBECONFIG=/var/lib/athena/admin.conf
+ExecStart=/usr/bin/kubectl wait --for=condition=Ready nodes --all --timeout=10m
+ExecStart=/usr/bin/kubectl apply -f /usr/share/athena/kubestellar/networkpolicy.yaml
+ExecStart=/usr/bin/helm upgrade --install kubestellar-core \
+    oci://ghcr.io/kubestellar/kubestellar/core-chart \
+    --version ${KUBESTELLAR_CORE_VERSION} \
+    --namespace kubeflex-system --create-namespace \
+    --values /usr/share/athena/kubestellar/values-core.yaml \
+    --wait --timeout 10m
+ExecStart=/usr/bin/helm upgrade --install kubestellar-console \
+    oci://ghcr.io/kubestellar/charts/kubestellar-console \
+    --version ${KUBESTELLAR_CONSOLE_VERSION} \
+    --namespace kubestellar-console --create-namespace \
+    --values /usr/share/athena/kubestellar/values-console.yaml \
+    --wait --timeout 10m
+TimeoutStartSec=infinity
+Restart=on-failure
+RestartSec=2min
+
+[Install]
+WantedBy=multi-user.target

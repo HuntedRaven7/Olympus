@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Quickshell
+Comment=Launches Quickshell when a Wayland session starts
+Exec=/usr/bin/quickshell
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

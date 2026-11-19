@@ -1,0 +1,37 @@
+---
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    uses: ./.github/workflows/reusable-static-tests.yml
+
+  renovate-config:
+    name: Validate renovate config
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6c0504801ae5e8e5f2ddc3dfee5c0 # v4.2.0
+        with:
+          node-version: "22"
+      - run: npx --yes --package renovate renovate-config-validator renovate.json5
+
+  kubestellar:
+    name: KubeStellar checks (nightly)
+    if: github.event_name != 'pull_request'
+    needs: static
+    uses: ./.github/workflows/reusable-boot-test.yml
+    with:
+      image-name: athena
+      cache-key: athena-amd64
+      check-kubestellar: true
