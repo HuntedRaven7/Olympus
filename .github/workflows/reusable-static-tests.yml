@@ -20,9 +20,11 @@ jobs:
           sudo apt-get install -y -qq shellcheck yamllint jq python3
 
       - name: Install actionlint
-        uses: taiki-e/install-action@main
-        with:
-          tool: actionlint@1.7.7
+        run: |
+          curl --no-progress-meter -fsSL \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz \
+            -o /tmp/actionlint.tar.gz
+          sudo tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint
 
       - name: Run static tests
         run: ./tests/static/run.sh

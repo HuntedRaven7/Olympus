@@ -1,6 +1,7 @@
 ---
 name: Build Athena
 permissions:
+  actions: read
   contents: read
   packages: write
   id-token: write

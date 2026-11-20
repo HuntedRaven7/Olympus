@@ -23,7 +23,7 @@ runs:
         GPG_KEY_DATA: ${{ inputs.gpg-key-data }}
       run: |
         set -euo pipefail
-        docker build -f build/Dockerfile -t olympus-pkgbuild .
+        docker build -f build/Dockerfile -t olympus-pkgbuild build
         docker run --rm \
           -e INPUT_REPO_NAME="$REPO_NAME" \
           -e INPUT_GPG_KEY_ID="$GPG_KEY_ID" \

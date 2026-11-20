@@ -60,5 +60,5 @@ jobs:
       contents: read
       security-events: write
     with:
-      image_matrix: '["hera","athena","apollo"]'
+      image_matrix: '{"include":[{"image_name":"hera"},{"image_name":"athena"},{"image_name":"apollo"}]}'
       default_tag: latest

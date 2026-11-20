@@ -1,6 +1,7 @@
 ---
 name: Build Apollo
 permissions:
+  actions: read
   contents: read
   packages: write
   id-token: write
