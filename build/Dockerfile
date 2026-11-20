@@ -11,5 +11,6 @@ RUN pacman -Syu --noconfirm --needed \
     echo "root ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 COPY entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

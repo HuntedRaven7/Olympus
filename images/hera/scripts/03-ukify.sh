@@ -27,10 +27,10 @@ sbsign \
     --output /out/boot/grubx64.efi \
     /target/usr/lib/systemd/boot/efi/systemd-bootx64.efi
 
-# Export the public certificate into the image for first-boot MOK enrollment.
-mkdir -p /target/usr/share/olympus/certs
+# Export the public certificate as an output artifact; the finalize stage
+# copies it into the image (/target is a read-only bind mount here).
 openssl x509 -in /run/secrets/secureboot_cert -outform DER \
-    -out /target/usr/share/olympus/certs/secureboot.der
+    -out /out/secureboot.der
 
 rm -rf /var/tmp
 echo "::endgroup::"
