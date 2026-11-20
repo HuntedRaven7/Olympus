@@ -14,7 +14,7 @@ if [ -n "${INPUT_GPG_KEY_DATA-}" ]; then
     gpg --import /dev/stdin <<<"${INPUT_GPG_KEY_DATA}"
 fi
 
-if [ -n "${INPUT_GPG_KEY_ID-}" ]; then
+if [ -n "${INPUT_GPG_KEY_ID-}" ] && ! gpg --list-keys "${INPUT_GPG_KEY_ID}" >/dev/null 2>&1; then
     gpg --recv-keys "${INPUT_GPG_KEY_ID}"
 fi
 
