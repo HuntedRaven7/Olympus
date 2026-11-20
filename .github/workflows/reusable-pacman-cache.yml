@@ -46,7 +46,11 @@ jobs:
 
       - name: Ensure cache directory exists
         if: inputs.mode == 'restore'
-        run: mkdir -p "${{ inputs.cache-path }}"
+        # Always upload at least one file: an empty dir makes upload-artifact
+        # skip the artifact entirely, which breaks the build job's download.
+        run: |
+          mkdir -p "${{ inputs.cache-path }}"
+          touch "${{ inputs.cache-path }}/.olympus-cache"
 
       - name: Upload restored cache to the build job
         if: inputs.mode == 'restore'
