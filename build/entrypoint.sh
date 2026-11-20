@@ -18,9 +18,11 @@ if [ -n "${INPUT_GPG_KEY_ID-}" ] && ! gpg --list-keys "${INPUT_GPG_KEY_ID}" >/de
     gpg --recv-keys "${INPUT_GPG_KEY_ID}"
 fi
 
-if [ -d "/github" ]; then
-    sudo chown -R build /github/workspace /github/home
-fi
+for dir in /github/workspace /github/home; do
+    if [ -d "$dir" ]; then
+        sudo chown -R build "$dir"
+    fi
+done
 
 mkdir -p repo
 sudo pacman -Syu --noconfirm
