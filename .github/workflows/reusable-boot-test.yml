@@ -38,16 +38,23 @@ jobs:
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
       - name: Install bcvk
-        run: cargo install bcvk --locked
+        run: |
+          curl --no-progress-meter -fsSL \
+            https://github.com/bootc-dev/bcvk/releases/download/v0.22.0/bcvk-x86_64-unknown-linux-gnu.tar.gz \
+            -o /tmp/bcvk.tar.gz
+          sudo tar -xzf /tmp/bcvk.tar.gz -C /usr/local/bin \
+            --strip-components=1 bcvk-x86_64-unknown-linux-gnu
 
       - name: Restore pacman cache
         run: mkdir -p .cache/pacman
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
         with:
           name: pacman-cache-${{ inputs.cache-key }}
-          path: .cache/pacman
+          path: .cache
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      - name: Unpack pacman cache
+        run: tar -xzf .cache/pacman-cache.tar.gz -C .cache/pacman
 
       - name: Build debug variant
         env:

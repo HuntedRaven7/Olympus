@@ -70,11 +70,13 @@ jobs:
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
         with:
           name: pacman-cache-${{ inputs.cache-key }}
-          path: .cache/pacman
+          path: .cache
           # The artifact is uploaded by a different reusable-workflow job;
           # default lookup only searches the current job's run scope.
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      - name: Unpack pacman cache
+        run: tar -xzf .cache/pacman-cache.tar.gz -C .cache/pacman
 
       - name: Write Secure Boot secrets
         if: inputs.sealed && env.HAS_SECUREBOOT == 'true'
@@ -107,17 +109,22 @@ jobs:
           SECUREBOOT_CERT: ${{ github.workspace }}/.drift/secureboot.crt
         run: |
           sudo env SECUREBOOT_KEY="$SECUREBOOT_KEY" SECUREBOOT_CERT="$SECUREBOOT_CERT" \
-            "$(which just)" build-sealed "$IMAGE_NAME"
+            JUST="$(which just)" "$(which just)" build-sealed "$IMAGE_NAME"
           sudo podman tag "localhost/${IMAGE_NAME}:latest-sealed" "localhost/${IMAGE_NAME}:latest"
 
+      - name: Pack updated pacman cache
+        if: always()
+        run: |
+          mkdir -p .cache/pacman
+          tar -czf pacman-cache.tar.gz -C .cache/pacman .
       - name: Upload updated pacman cache
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4.6.2
         with:
           name: pacman-cache-updated-${{ inputs.cache-key }}
-          path: .cache/pacman
+          path: pacman-cache.tar.gz
           retention-days: 1
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Login to GHCR
         if: inputs.publish

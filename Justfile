@@ -10,6 +10,8 @@ images_dir := repo_root + "/images"
 registry := env("REGISTRY", "ghcr.io/" + env("GITHUB_REPOSITORY_OWNER", "huntedraven7"))
 image_tag := env("IMAGE_TAG", "latest")
 base_image := env("BASE_IMAGE", "localhost/hera:latest")
+# Absolute path is needed when recipes are invoked under sudo in CI.
+just_bin := env("JUST", "just")
 bootc_repo_url := env("BOOTC_REPO_URL", "https://github.com/hecknt/arch-bootc-pkgs/releases/download/$repo")
 bootc_repo_key := env("BOOTC_REPO_KEY", "5DE6BF3EBC86402E7A5C5D241FA48C960F9604CB")
 
@@ -47,7 +49,7 @@ build-sealed image="hera":
     set -euo pipefail
     : "${SECUREBOOT_KEY:?SECUREBOOT_KEY must point to a PEM private key}"
     : "${SECUREBOOT_CERT:?SECUREBOOT_CERT must point to a PEM certificate}"
-    just build "{{ image }}"
+    "{{ just_bin }}" build "{{ image }}"
     sudo podman build \
         --target split-kernel \
         --build-arg BOOTC_REPO_URL='{{ bootc_repo_url }}' \

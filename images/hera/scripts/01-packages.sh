@@ -56,7 +56,6 @@ else
 fi
 
 # Remove build-only packages and any leftover cache/PACNEW files.
-pacman -Rns --noconfirm linux-headers pkgconf || true
 find /etc -name '*.pacnew' -type f -delete
 
 # Pre-configure first boot: no interactive prompts, DHCP on ethernet.

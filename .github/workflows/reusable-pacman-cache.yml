@@ -3,11 +3,14 @@ name: Pacman cache
 # Reusable pacman cache for Olympus image builds.
 #
 # A workflow_call job cannot share its workspace with the caller's job, so the
-# cache is carried between jobs as an artifact:
+# cache is carried between jobs as a single tarball artifact:
 #   1. call this workflow with mode=restore  -> uploads "pacman-cache-<key>"
-#   2. in the build job, download artifact to .cache/pacman and build
-#   3. upload the updated .cache/pacman as "pacman-cache-updated-<key>"
-#   4. call this workflow with mode=save -> saves the updated cache
+#   2. in the build job, download and extract it into .cache/pacman, then build
+#   3. tar the updated .cache/pacman and upload "pacman-cache-updated-<key>"
+#   4. call this workflow with mode=save -> extracts the tarball and saves it
+#
+# A tarball avoids upload-artifact rejecting Arch package filenames that
+# contain an epoch colon (e.g. avahi-1:0.9rc5-2-x86_64.pkg.tar.zst).
 on:
   workflow_call:
     inputs:
@@ -44,31 +47,36 @@ jobs:
             pacman-${{ inputs.cache-key }}-
             pacman-
 
-      - name: Ensure cache directory exists
+      - name: Pack restored cache
         if: inputs.mode == 'restore'
-        # Always upload at least one file: an empty dir makes upload-artifact
-        # skip the artifact entirely, which breaks the build job's download.
         run: |
           mkdir -p "${{ inputs.cache-path }}"
           touch "${{ inputs.cache-path }}/olympus-cache.marker"
+          tar -czf pacman-cache.tar.gz -C "${{ inputs.cache-path }}" .
 
       - name: Upload restored cache to the build job
         if: inputs.mode == 'restore'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4.6.2
         with:
           name: pacman-cache-${{ inputs.cache-key }}
-          path: ${{ inputs.cache-path }}
+          path: pacman-cache.tar.gz
           retention-days: 1
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Download updated cache from the build job
         if: inputs.mode == 'save'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0
         with:
           name: pacman-cache-updated-${{ inputs.cache-key }}
-          path: ${{ inputs.cache-path }}
+          path: pacman-cache-updated
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+
+      - name: Unpack updated cache
+        if: inputs.mode == 'save'
+        run: |
+          mkdir -p "${{ inputs.cache-path }}"
+          tar -xzf pacman-cache-updated/pacman-cache.tar.gz -C "${{ inputs.cache-path }}"
 
       - name: Save pacman cache
         if: inputs.mode == 'save'
