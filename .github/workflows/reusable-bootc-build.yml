@@ -102,7 +102,7 @@ jobs:
           SECUREBOOT_CERT: ${{ github.workspace }}/.drift/secureboot.crt
         run: |
           sudo env SECUREBOOT_KEY="$SECUREBOOT_KEY" SECUREBOOT_CERT="$SECUREBOOT_CERT" \
-            $(which just) build-sealed "$IMAGE_NAME"
+            "$(which just)" build-sealed "$IMAGE_NAME"
           sudo podman tag "localhost/${IMAGE_NAME}:latest-sealed" "localhost/${IMAGE_NAME}:latest"
 
       - name: Upload updated pacman cache
@@ -128,9 +128,12 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq "$MAX_RETRIES"); do
-            sudo podman push --digestfile=/tmp/digestfile \
-              "localhost/${IMAGE_NAME}:latest" \
-              "${REGISTRY}/${IMAGE_NAME}:latest" && break || sleep $((5 * i))
+            if sudo podman push --digestfile=/tmp/digestfile \
+                "localhost/${IMAGE_NAME}:latest" \
+                "${REGISTRY}/${IMAGE_NAME}:latest"; then
+              break
+            fi
+            sleep $((5 * i))
           done
           echo "digest=$(cat /tmp/digestfile)" >> "$GITHUB_OUTPUT"
 
