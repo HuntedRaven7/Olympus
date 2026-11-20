@@ -4,6 +4,9 @@
 source /hera-scripts/lib.sh
 set -euo pipefail
 
+mkdir -p /sysroot
+ln -sT sysroot/ostree /ostree
+
 echo "::group::Install Apollo packages"
 
 retry pacman -Syu --noconfirm --needed
