@@ -26,6 +26,5 @@ retry pacman -S --noconfirm --needed \
     openssl
 
 find /etc -name '*.pacnew' -type f -delete
-rm -rf /var/cache/pacman/pkg/*
 
 echo "::endgroup::"

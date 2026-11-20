@@ -17,7 +17,7 @@ ARG IMAGE_VARIANT=latest
 # Set to true only for the boot-test debug variant; never for published images.
 ARG WITH_TEST_TOOLS=false
 
-RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg \
+RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg,rw \
     --mount=type=tmpfs,dst=/tmp \
     bash /apollo-scripts/00-packages.sh && \
     bash /apollo-scripts/01-desktop.sh && \

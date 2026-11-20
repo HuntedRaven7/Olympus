@@ -60,6 +60,11 @@ jobs:
       - name: Setup Just
         uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
 
+      - name: Normalize registry reference
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "REGISTRY=ghcr.io/$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
       - name: Restore pacman cache artifact
         run: mkdir -p .cache/pacman
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v4.3.0

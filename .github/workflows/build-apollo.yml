@@ -36,7 +36,7 @@ jobs:
     secrets: inherit
     with:
       image-name: apollo
-      base-image: ghcr.io/${{ github.repository_owner }}/hera:latest
+      base-image: ghcr.io/huntedraven7/hera:latest
       cache-key: apollo-amd64
       sealed: false
       publish: ${{ github.event_name != 'pull_request' }}

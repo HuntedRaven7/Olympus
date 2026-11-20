@@ -58,7 +58,6 @@ fi
 # Remove build-only packages and any leftover cache/PACNEW files.
 pacman -Rns --noconfirm linux-headers pkgconf || true
 find /etc -name '*.pacnew' -type f -delete
-rm -rf /var/cache/pacman/pkg/*
 
 # Pre-configure first boot: no interactive prompts, DHCP on ethernet.
 echo "uninitialized" > /etc/machine-id

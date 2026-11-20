@@ -7,7 +7,7 @@ echo "::group::Harden Athena"
 
 if [[ "${WITH_TEST_TOOLS:-false}" == "true" ]]; then
     echo "::warning::building debug variant: shells and SSH are retained for boot tests"
-    rm -rf /tmp/* /var/cache/pacman/pkg/* /athena-scripts /hera-scripts
+    rm -rf /tmp/* /athena-scripts /hera-scripts
     echo "::endgroup::"
     exit 0
 fi
@@ -42,7 +42,7 @@ mkdir -p /usr/lib/systemd/factory-reset
 systemctl enable systemd-factory-reset.target 2>/dev/null || true
 
 # 5. Clean up build residue.
-rm -rf /tmp/* /tmp/.* /var/cache/pacman/pkg/* /athena-scripts /hera-scripts
+rm -rf /tmp/* /tmp/.* /athena-scripts /hera-scripts
 find /etc -name '*.pacnew' -type f -delete
 
 echo "::endgroup::"

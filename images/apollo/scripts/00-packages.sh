@@ -51,6 +51,5 @@ userdel -r builder
 rm -rf /home/builder /etc/sudoers.d/builder
 pacman -Rns --noconfirm base-devel || true
 find /etc -name '*.pacnew' -type f -delete
-rm -rf /var/cache/pacman/pkg/*
 
 echo "::endgroup::"

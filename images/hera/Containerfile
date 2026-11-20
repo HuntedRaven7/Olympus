@@ -23,7 +23,7 @@ ARG IMAGE_FLAVOR=arch
 # Set to true only for the boot-test debug variant; never for published images.
 ARG WITH_TEST_TOOLS=false
 
-RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg \
+RUN --mount=type=bind,src=.cache/pacman,target=/var/cache/pacman/pkg,rw \
     --mount=type=secret,id=secureboot_cert,target=/run/secrets/secureboot_cert \
     --mount=type=tmpfs,dst=/tmp \
     bash /hera-scripts/00-base.sh && \
