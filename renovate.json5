@@ -65,7 +65,8 @@
     },
   ],
 
-  dependencyDashboard: {
-    labels: ["dependencies", "renovate"],
-  },
+  // Keep the boolean form: Renovate 42 (used by renovate-config-validator in CI)
+  // requires a boolean; newer versions accept it with a migration hint only.
+  dependencyDashboard: true,
+  dependencyDashboardLabels: ["dependencies", "renovate"],
 }

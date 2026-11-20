@@ -66,6 +66,10 @@ jobs:
         with:
           name: pacman-cache-${{ inputs.cache-key }}
           path: .cache/pacman
+          # The artifact is uploaded by a different reusable-workflow job;
+          # default lookup only searches the current job's run scope.
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Write Secure Boot secrets
         if: inputs.sealed && env.HAS_SECUREBOOT == 'true'

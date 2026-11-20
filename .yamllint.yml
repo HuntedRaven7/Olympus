@@ -1,0 +1,8 @@
+extends: default
+
+rules:
+  # Workflows contain long `run: |` blocks and `uses:` SHAs; don't enforce 80 cols.
+  line-length: disable
+  # YAML 1.1 treats `on:` as a boolean key; GitHub Actions does not.
+  truthy: disable
+  comments: disable
