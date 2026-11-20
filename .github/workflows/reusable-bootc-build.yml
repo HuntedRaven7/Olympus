@@ -149,17 +149,19 @@ jobs:
           done
           echo "digest=$(cat /tmp/digestfile)" >> "$GITHUB_OUTPUT"
 
+      # Keyless (Fulcio/Rekor) signing uses the GitHub OIDC token, so it needs
+      # no private key file and cannot hang waiting for an interactive
+      # passphrase. Requires `id-token: write` on the calling job.
       - name: Sign, SBOM and attest (projectbluefin/actions)
         id: sign
-        if: inputs.publish && env.HAS_SIGNING_KEY == 'true'
+        if: inputs.publish
         continue-on-error: true
         uses: projectbluefin/actions/bootc-build/sign-and-publish@v1
         with:
           image: ${{ env.REGISTRY }}/${{ inputs.image-name }}
           digest: ${{ steps.push.outputs.digest }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          signing-mode: key
-          signing-key: ${{ secrets.SIGNING_SECRET }}
+          signing-mode: keyless
           generate-sbom: "true"
           push-attestation: "true"
           image-name: ${{ inputs.image-name }}
@@ -167,14 +169,10 @@ jobs:
           certificate-identity-regexp: 'https://github.com/${{ github.repository }}/.github/workflows/'
 
       - name: Fail if the published image is unsigned
-        if: inputs.publish && env.HAS_SIGNING_KEY == 'true' && steps.sign.outputs.image-signed != 'true'
+        if: inputs.publish && steps.sign.outputs.image-signed != 'true'
         run: |
           echo "::error::${REGISTRY}/${IMAGE_NAME} was pushed but has no verified signature"
           exit 1
-
-      - name: Warn when signing is not configured
-        if: inputs.publish && env.HAS_SIGNING_KEY == 'false'
-        run: echo "::warning::SIGNING_SECRET is not set - publishing an unsigned image"
 
       - name: Scan image (projectbluefin/actions)
         if: inputs.publish
@@ -192,6 +190,6 @@ jobs:
           {
             echo "### ${IMAGE_NAME}"
             echo "- sealed: ${{ inputs.sealed && env.HAS_SECUREBOOT == 'true' }}"
-            echo "- signed: ${{ env.HAS_SIGNING_KEY }}"
+            echo "- signed: ${{ inputs.publish }}"
             echo "- published: ${{ inputs.publish }}"
           } >> "$GITHUB_STEP_SUMMARY"

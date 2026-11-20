@@ -5,7 +5,7 @@ uses the following repository secrets:
 
 | Name | Kind | Purpose |
 | ---- | ---- | ------- |
-| `SIGNING_SECRET` | secret | cosign private key (PEM). Public key committed as `cosign.pub`. |
+| `SIGNING_SECRET` | secret | optional cosign private key for manual signing (CI uses keyless OIDC; `cosign.pub` is the committed public half) |
 | `SECUREBOOT_KEY` | secret | PEM private key used by `bootc container ukify` and `sbsign`. |
 | `SECUREBOOT_CERT` | secret | PEM certificate matching `SECUREBOOT_KEY`. |
 | `GPG_KEY_DATA` | secret | armored private GPG key that signs the pacman repo built from `packages/`. |
@@ -27,11 +27,11 @@ gh repo set-default HuntedRaven7/Olympus
 > the private key files safe (or delete them after upload) — they cannot be
 > retrieved from GitHub again.
 
-### 1. cosign signing key (`SIGNING_SECRET`)
+### 1. cosign signing key (`SIGNING_SECRET`, optional)
 
-Generate a key pair with an **empty password** (the signing step does not set
-`COSIGN_PASSWORD`; for a passphrase-protected key you would also need to add
-that as a secret and pass it to cosign):
+CI signs keyless with GitHub OIDC, so this key is **not required** for CI.
+Generate a pair only if you want to sign images manually. Use an empty password
+to avoid an interactive prompt:
 
 ```sh
 mkdir -p /tmp/olympus-keys && cd /tmp/olympus-keys
@@ -122,10 +122,10 @@ gh variable delete GPG_KEY_ID
 
 - **Secure Boot**: CI builds the unsealed variant; a note is written to the
   job summary. No sealed image is published.
-- **cosign**: the `sign-and-publish` step is skipped and the workflow emits a
-  warning. Published images are therefore unsigned until `SIGNING_SECRET` is
-  configured — enable the repository rule requiring signatures only after the
-  key is in place.
+- **cosign**: published images are signed **keyless** with the GitHub OIDC
+  identity (`id-token: write`), so no private key is needed in CI. `SIGNING_SECRET`
+  is only useful for manual signing. If signing fails, the build job fails
+  rather than leaving an unsigned image at a release tag.
 - **pacman repo build**: the `packages/` workflow skips publication; Hera uses
   the URL in `BOOTC_REPO_URL` (default: the upstream arch-bootc-pkgs release).
 
